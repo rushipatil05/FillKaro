@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "AutoForm AI",
+  "version": "1.0.0",
+  "description": "Detect, export, and autofill web forms intelligently using profiles and Excel.",
+  "icons": {
+    "16":  "icons/icon16.png",
+    "48":  "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon":  "icons/icon48.png",
+    "default_title": "AutoForm AI"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js":      ["content.js"],
+      "run_at":  "document_idle"
+    }
+  ],
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": ["<all_urls>"],
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/*"],
+      "matches":   ["<all_urls>"]
+    }
+  ]
+}
