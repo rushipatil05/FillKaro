@@ -11,7 +11,7 @@ export default function ProfileCard({ profile, onEdit, onDelete }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
       whileHover={{ y: -2 }}
-      className="card flex flex-col gap-4 group"
+      className="card flex flex-col gap-4 group border border-slate-200/80"
     >
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
@@ -53,7 +53,7 @@ export default function ProfileCard({ profile, onEdit, onDelete }) {
         </div>
       )}
 
-      <div className="bg-slate-50 rounded-xl p-3 space-y-1.5">
+      <div className="bg-slate-50/80 rounded-2xl p-3 space-y-1.5">
         {Object.entries(profile.fieldMap || {}).slice(0, 4).map(([k, v]) => (
           <div key={k} className="flex justify-between text-xs">
             <span className="text-slate-400 font-medium truncate max-w-[40%]">{k}</span>
