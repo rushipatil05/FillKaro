@@ -1,69 +1,64 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  * {
-    box-sizing: border-box;
-  }
+  * { box-sizing: border-box; }
 
   body {
-    @apply bg-[#fff8f0] text-slate-900 font-sans antialiased;
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    background-color: #F8FAFC;
+    color: #111827;
     margin: 0;
+    -webkit-font-smoothing: antialiased;
   }
 
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-
-  ::-webkit-scrollbar-track {
-    @apply bg-slate-100;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    @apply bg-slate-300 rounded-full;
-  }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: #F1F5F9; }
+  ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 99px; }
 }
 
 @layer components {
-  .card {
-    @apply bg-white/90 rounded-3xl shadow-xl border border-slate-200 p-6 backdrop-blur-sm;
-  }
 
+  /* ── Buttons ────────────────────────────────────── */
   .btn-primary {
-    @apply bg-brand-600 hover:bg-brand-700 text-white font-semibold px-4 py-2 rounded-2xl transition-all duration-150 active:scale-95 shadow-lg;
+    @apply inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8]
+           text-white text-sm font-medium px-4 py-2 rounded-[10px]
+           transition-colors duration-150 cursor-pointer;
   }
 
   .btn-secondary {
-    @apply bg-white hover:bg-slate-50 text-slate-700 font-medium px-4 py-2 rounded-2xl border border-slate-200 transition-all duration-150 active:scale-95 shadow-sm;
+    @apply inline-flex items-center gap-2 bg-white hover:bg-[#F8FAFC]
+           text-[#374151] text-sm font-medium px-4 py-2 rounded-[10px]
+           border border-[#E5E7EB] transition-colors duration-150 cursor-pointer;
   }
 
   .btn-danger {
-    @apply bg-red-50 hover:bg-red-100 text-red-600 font-medium px-4 py-2 rounded-xl border border-red-200 transition-all duration-150 active:scale-95;
+    @apply inline-flex items-center gap-2 text-[#EF4444] hover:bg-[#FEF2F2]
+           text-sm font-medium px-3 py-1.5 rounded-[8px]
+           transition-colors duration-150 cursor-pointer w-full;
   }
 
+  /* ── Form inputs ─────────────────────────────────── */
   .input {
-    @apply w-full px-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 text-slate-800 placeholder-slate-400 transition-all duration-150;
+    @apply w-full px-3 py-2 text-sm rounded-[10px]
+           border border-[#E5E7EB] bg-white text-[#111827]
+           placeholder-[#9CA3AF] outline-none
+           focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10
+           transition-all duration-150;
   }
 
-  .badge {
-    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium;
+  /* ── Cards ───────────────────────────────────────── */
+  .card {
+    @apply bg-white rounded-xl border border-[#E5E7EB]
+           shadow-[0_1px_4px_rgba(0,0,0,0.06)];
   }
 
-  .badge-green {
-    @apply badge bg-green-100 text-green-700;
-  }
-
-  .badge-yellow {
-    @apply badge bg-yellow-100 text-yellow-700;
-  }
-
-  .badge-red {
-    @apply badge bg-red-100 text-red-600;
-  }
-
-  .badge-blue {
-    @apply badge bg-brand-100 text-brand-700;
+  /* ── Tag badge ───────────────────────────────────── */
+  .tag {
+    @apply inline-flex items-center px-2 py-0.5 rounded-[6px]
+           bg-[#EFF6FF] text-[#2563EB] text-xs font-medium;
   }
 }

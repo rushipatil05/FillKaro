@@ -1,32 +1,40 @@
 # FillKaro 🤖
 
-A production-ready Chrome Extension (MV3) + MERN web app that detects, exports, and autofills web forms intelligently.
+A Chrome Extension (MV3) + web dashboard that detects, exports, and autofills web forms intelligently — powered by **Gemini AI embeddings** for semantic field matching.
 
 ## Project Structure
 
 ```
 FillKaro/
-├── extension/    # Chrome Extension (MV3) — React + Vite + Tailwind
-├── server/       # Express + MongoDB API
-└── client/       # MERN Dashboard — React + Vite + Tailwind
+├── extension/   # Chrome Extension (MV3) — React + Vite + Tailwind
+├── backend/     # Node.js + Express API — MongoDB + Gemini AI
+└── client/      # Dashboard — React + Vite + Tailwind
 ```
 
 ---
 
 ## Prerequisites
 
-- Node.js >= 18
+- Node.js ≥ 18
 - MongoDB running locally (`mongod`)
 - Chrome browser
+- A free [Gemini API key](https://aistudio.google.com/app/apikey) *(for AI field matching)*
 
 ---
 
-## 1. Start the Server
+## 1. Start the Backend
 
 ```bash
-cd server
+cd backend
 npm install
-cp .env.example .env   # edit if needed
+```
+
+Edit `backend/.env` and add your Gemini API key:
+```
+GEMINI_API_KEY=your_key_here
+```
+
+```bash
 npm run dev
 ```
 Server runs at `http://localhost:5000`
@@ -76,7 +84,8 @@ The FillKaro icon will appear in your toolbar.
 ## Features
 
 - 🔍 Smart form field detection (input, textarea, select, radio, checkbox)
+- ✨ **Gemini AI embedding-based field matching** (semantic similarity)
+- 🎲 Dice coefficient fuzzy matching (fallback when AI is offline)
 - 📊 Excel export/import with SheetJS
-- 🤖 Fuzzy-match autofill engine (Dice coefficient)
 - 👤 Profile management (save & reuse fill data)
 - ⌨️ Human-like typing mode

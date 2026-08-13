@@ -33,10 +33,7 @@ export const createTemplate = (data) => api.post('/templates', data).then(r => r
 export const updateTemplate = (id, d) => api.put(`/templates/${id}`, d).then(r => r.data);
 export const deleteTemplate = (id) => api.delete(`/templates/${id}`).then(r => r.data);
 
-// ── History ───────────────────────────────────────────────
-export const getHistory = (p = 1, l = 20) => api.get(`/history?page=${p}&limit=${l}`).then(r => r.data);
-export const getStats = () => api.get('/history/stats').then(r => r.data);
-export const logHistory = (data) => api.post('/history', data).then(r => r.data);
-export const deleteHistory = (id) => api.delete(`/history/${id}`).then(r => r.data);
+// ── History (removed) ──────────────────────────────────────
+// History API functions removed because the History page was removed from the UI.
 
 export default api;

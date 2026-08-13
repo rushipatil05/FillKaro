@@ -1,52 +1,67 @@
-# Auto-FormFiller — Backend
+# FillKaro — Backend (Node.js + Express)
 
-This document describes how to start the backend service locally.
+REST API server powering the FillKaro dashboard and Chrome extension.
+Includes a **Gemini AI embedding** endpoint for semantic form-field matching.
 
 ## Prerequisites
-- Java 17 or newer installed (`java -version`).
-- Maven 3.6+ installed (`mvn -v`).
-- (Optional) `JAVA_HOME` set to your JDK installation.
+- Node.js ≥ 18
+- MongoDB running locally (`mongod`) or a MongoDB Atlas connection string
+- A free [Gemini API key](https://aistudio.google.com/app/apikey) *(optional — Dice fallback is used if not set)*
 
-## Run from source (development)
-1. Open a terminal and change to the `backend` folder:
+## Setup
 
-```powershell
+```bash
 cd backend
+npm install
 ```
 
-2. Run with Maven:
+Add your values to `.env`:
 
-```powershell
-mvn spring-boot:run
+```env
+PORT=5000
+MONGO_URI=mongodb://localhost:27017/fillkaro
+GEMINI_API_KEY=your_key_here   # get free key at aistudio.google.com
 ```
 
-This starts the application using the configuration in `src/main/resources/application.properties` (default port 8080).
+## Run
 
-## Build and run the packaged JAR
-1. Build the project:
-
-```powershell
-cd backend
-mvn clean package -DskipTests
+```bash
+npm run dev     # development (auto-restart via nodemon)
+npm start       # production
 ```
 
-2. Run the generated JAR (use the JAR file in `target/`):
+Server starts at `http://localhost:5000`
 
-```powershell
-java -jar target/*.jar
+## API Routes
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| GET | `/api/health` | Health check |
+| GET/POST/PUT/DELETE | `/api/profiles` | Profile CRUD |
+| GET/POST/PUT/DELETE | `/api/templates` | Template CRUD |
+| GET/POST/DELETE | `/api/history` | History with pagination |
+| GET | `/api/history/stats` | Aggregated fill stats |
+| POST | `/api/ai/match-fields` | **GenAI** — Gemini embedding-based field matching |
+
+## GenAI Endpoint
+
+`POST /api/ai/match-fields`
+
+```json
+{
+  "fields": [{ "label": "Full Name", "name": "name", "type": "text" }],
+  "profileMap": { "First Name": "Rushikesh", "Last Name": "Patil" }
+}
 ```
 
-You can override the port at startup, for example:
-
-```powershell
-java -jar target/*.jar --server.port=8081
+Response:
+```json
+{
+  "matches": {
+    "0": { "key": "First Name", "value": "Rushikesh", "score": 0.94 }
+  },
+  "engine": "gemini-embedding"
+}
 ```
 
-## Troubleshooting
-- If you see `port already in use`, either stop the process using the port or run the app on a different port (see example above).
-- If Maven fails, ensure your network/proxy settings allow dependency downloads.
-
-## Useful files
-- Application configuration: [backend/src/main/resources/application.properties](backend/src/main/resources/application.properties#L1)
-
-If you'd like, I can also add a `docker-compose` or Dockerfile to simplify running the backend.
+If `GEMINI_API_KEY` is not set, returns `{ "matches": {}, "engine": "none" }` and the extension falls back to Dice coefficient matching automatically.

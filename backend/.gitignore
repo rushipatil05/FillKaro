@@ -1,32 +1,19 @@
-# Maven
-target/
-pom.xml.tag
-pom.xml.releaseBackup
-pom.xml.versionsBackup
-release.properties
-.flattened-pom.xml
+# Dependencies
+node_modules/
 
-# IDE
-.idea/
-*.iml
-*.iws
-*.ipr
-.settings/
-.classpath
-.project
-*.swp
-*.swo
-*~
-.vscode/
+# Environment — never commit secrets
+.env
+
+# Logs
+*.log
+logs/
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Application
-*.log
-logs/
-.env
-
-# Dependencies
-.m2/
+# Editor
+.vscode/
+.idea/
+*.swp
+*~

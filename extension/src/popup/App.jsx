@@ -41,6 +41,7 @@ export default function App() {
   const [fillStatus,  setFillStatus]  = useState('idle'); // idle | filling | filled | error
   const [fillResult,  setFillResult]  = useState(null);
   const [humanMode,   setHumanMode]   = useState(false);
+  const [aiEngine,    setAiEngine]    = useState(null);   // 'gemini-embedding' | 'dice' | null
 
   // Excel import state — persisted to chrome.storage
   // importedRows: Array<{ label: string, map: { [key]: value } }>
@@ -122,6 +123,7 @@ export default function App() {
 
     setFillStatus('filling');
     setFillResult(null);
+    setAiEngine(null);
 
     try {
       const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -140,7 +142,7 @@ export default function App() {
           await chrome.scripting.executeScript({ target: { tabId: activeTab.id }, files: ['content.js'] });
           await new Promise(r => setTimeout(r, 400));
         } catch (injErr) {
-          console.warn('[AutoForm AI popup] Injection failed:', injErr.message);
+          console.warn('[FillKaro popup] Injection failed:', injErr.message);
         }
       }
 
@@ -151,12 +153,54 @@ export default function App() {
 
       if (!currentFields.length) throw new Error('No fillable form fields found on this page.');
 
+      /* ── ✨ GenAI: Embedding-based field matching ─────────────────────
+         Call /api/ai/match-fields to semantically resolve which profile
+         value belongs to each form field using Gemini text-embedding-004.
+
+         If the server is offline or GEMINI_API_KEY is not set, the
+         endpoint returns { matches: {}, engine: 'none' } — we silently
+         fall back to Dice coefficient matching inside the content script.
+      ──────────────────────────────────────────────────────────────── */
+      let enhancedProfile = { ...profile };
+      let usedEngine = 'dice';
+
+      try {
+        const aiRes = await fetch(`${serverUrl}/ai/match-fields`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fields: currentFields, profileMap: profile }),
+          signal: AbortSignal.timeout(10000),  // 10s timeout
+        });
+
+        if (aiRes.ok) {
+          const { matches, engine } = await aiRes.json();
+
+          if (engine === 'gemini-embedding' && matches && Object.keys(matches).length > 0) {
+            // Inject AI-resolved entries into the profile map.
+            // Key = form field label so Dice inside content script scores 1.0 on them.
+            for (const [fieldIndex, match] of Object.entries(matches)) {
+              const field = currentFields[parseInt(fieldIndex)];
+              const fieldKey = field?.label || field?.ariaLabel || field?.name || field?.placeholder;
+              if (fieldKey && match?.value) {
+                enhancedProfile[fieldKey] = match.value;
+              }
+            }
+            usedEngine = 'gemini-embedding';
+          }
+        }
+      } catch (aiErr) {
+        // Server offline, no API key, or quota exceeded — silently use Dice
+        console.log('[FillKaro] AI matching unavailable:', aiErr.message, '→ using Dice fallback');
+      }
+
+      setAiEngine(usedEngine);
+
       const res = await sendMsg(
         activeTab.id,
         {
           action:     'AUTOFILL',
           fields:     currentFields,
-          profileMap: profile,
+          profileMap: enhancedProfile,
           options:    { humanMode, threshold: 0.42, delayBetween: humanMode ? 100 : 50 },
         },
         30000,
@@ -167,31 +211,13 @@ export default function App() {
       setFillResult(res);
       setFillStatus('filled');
 
-      // Log to server (fire-and-forget)
-      if (pageInfo) {
-        fetch(`${serverUrl}/history`, {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            domain:      pageInfo.domain,
-            url:         pageInfo.url,
-            title:       pageInfo.title || '',
-            fieldCount:  res.total,
-            filledCount: res.filled,
-            profileName: importedRows
-              ? (importedRows[selectedRowIdx]?.label || 'Excel Import')
-              : (selectedProfile?.name || 'Excel Import'),
-            profileUsed: selectedProfile?._id || selectedProfile?.id || null,
-            status:      res.filled === res.total ? 'complete'
-                       : res.filled > 0           ? 'partial' : 'failed',
-          }),
-        }).catch(() => {});
-      }
+      // History logging removed when History page was removed from the dashboard.
     } catch (err) {
       setFillStatus('error');
       setFillResult({ error: err.message });
     }
   };
+
 
   const profileMap = importedMap || (selectedProfile?.fieldMap
     ? Object.fromEntries(Object.entries(selectedProfile.fieldMap))
@@ -319,7 +345,16 @@ export default function App() {
               {fillStatus !== 'idle' && (
                 <div className={`rounded-xl p-3 text-xs space-y-1 ${fillStatus === 'filled' ? 'bg-green-50 border border-green-200' : fillStatus === 'error' ? 'bg-red-50 border border-red-100' : 'bg-blue-50'}`}>
                   {fillStatus === 'filled' && fillResult && (
-                    <p className="font-medium text-green-700">✅ Filled {fillResult.filled}/{fillResult.total} fields</p>
+                    <>
+                      <p className="font-medium text-green-700">✅ Filled {fillResult.filled}/{fillResult.total} fields</p>
+                      {aiEngine && (
+                        <p className="text-[10px] text-green-500 flex items-center gap-1">
+                          {aiEngine === 'gemini-embedding'
+                            ? '✨ Matched using Gemini AI embeddings'
+                            : '🎲 Matched using Dice coefficient fallback'}
+                        </p>
+                      )}
+                    </>
                   )}
                   {fillStatus === 'error' && <p className="text-red-600">❌ {fillResult?.error}</p>}
                   {fillStatus === 'filling' && <p className="text-blue-600 flex items-center gap-1"><span className="animate-spin inline-block">⚙</span> Filling fields…</p>}
