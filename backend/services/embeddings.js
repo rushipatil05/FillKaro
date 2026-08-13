@@ -6,20 +6,13 @@
  *   - Cosine Similarity : Measures the angle between two vectors (0=unrelated, 1=identical)
  *   - Semantic Matching : Matching by meaning, not just character overlap
  *   - Batch Embedding   : Embedding multiple texts in a single API call for efficiency
+ *
+ * NOTE: We use direct REST calls (v1) instead of the @google/generative-ai SDK
+ * because SDK v0.21.0 hardcodes the v1beta endpoint, and text-embedding-004 is
+ * only available on v1. Direct fetch bypasses that limitation cleanly.
  */
 
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-
-/* ── Lazy-init the Gemini client (only when GEMINI_API_KEY is present) ── */
-let _model = null;
-function getModel() {
-  if (!process.env.GEMINI_API_KEY) return null;
-  if (!_model) {
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    _model = genAI.getGenerativeModel({ model: 'text-embedding-004' });
-  }
-  return _model;
-}
+const MODEL = 'gemini-embedding-001';
 
 /* ── Light normalisation before embedding ── */
 function norm(str) {
@@ -32,24 +25,38 @@ function norm(str) {
 }
 
 /**
- * Embed an array of strings in ONE batch call using Gemini text-embedding-004.
- * Returns an array of Float32 arrays (one per input string).
+ * Embed an array of strings via direct v1 REST API call.
+ * Returns an array of number[] (one embedding per input string).
  *
- * SEMANTIC_SIMILARITY task type is best for comparing two pieces of text
- * to determine how similar they are in meaning.
+ * Uses parallel embedContent calls (Promise.all) since batchEmbedContents
+ * is not available on gemini-embedding-001 via the REST API.
  */
 async function batchEmbed(texts) {
-  const model = getModel();
-  if (!model) throw new Error('GEMINI_API_KEY not configured');
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new Error('GEMINI_API_KEY not configured');
 
-  const result = await model.batchEmbedContents({
-    requests: texts.map(text => ({
-      content: { parts: [{ text }] },
-      taskType: 'SEMANTIC_SIMILARITY',
-    })),
-  });
+  // embedContent calls run in parallel — fast for small batches (< 20 texts)
+  const results = await Promise.all(
+    texts.map(async function(text) {
+      const url = 'https://generativelanguage.googleapis.com/v1/models/' + MODEL + ':embedContent?key=' + key;
+      const res = await fetch(url, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content:  { parts: [{ text: text }] },
+          taskType: 'SEMANTIC_SIMILARITY',
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(function(){ return {}; });
+        throw new Error('Gemini API ' + res.status + ': ' + (err && err.error && err.error.message || res.statusText));
+      }
+      const data = await res.json();
+      return data.embedding.values; // number[]
+    })
+  );
 
-  return result.embeddings.map(e => e.values); // Float32Array[]
+  return results; // number[][]
 }
 
 /**

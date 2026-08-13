@@ -19,6 +19,13 @@ const IcoSearch   = ({s=13}) => <svg width={s} height={s} viewBox="0 0 24 24" fi
 const IcoPlus     = ({s=12}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
 const IcoDots     = ({s=14}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="19" r="1" fill="currentColor"/></svg>;
 
+/* ─────────────────────────────────────────────────────────
+   📦 PASTE YOUR GOOGLE DRIVE DIRECT-DOWNLOAD LINK HERE
+   Format: https://drive.google.com/uc?export=download&id=FILE_ID
+   Replace FILE_ID with the ID from your Drive share link.
+──────────────────────────────────────────────────────────── */
+const DRIVE_ZIP_URL = 'https://drive.google.com/uc?export=download&id=YOUR_FILE_ID_HERE';
+
 /* ── Scroll-fade hook ───────────────────────────────── */
 function useScrollFade() {
   const ref = useRef(null);
@@ -494,7 +501,7 @@ const FEATURES = [
   { icon:<IcoGlobe/>, title:'Works on Most Sites',     desc:'Handles standard forms, Google Forms, React, Vue, and Material UI inputs.' },
   { icon:<IcoShield/>,title:'Privacy First',            desc:'Your profile data never leaves your device. No servers receive your personal info.' },
   { icon:<IcoKey/>,   title:'User-Owned API Key',      desc:'Use your own Gemini key. We never see it, store it, or pay for your API usage.' },
-  { icon:<IcoFile/>,  title:'Excel Import/Export',     desc:'Create profiles from Excel files. Export form fields as a spreadsheet template.' },
+
   { icon:<svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>, title:'Fast & Lightweight', desc:'No background processes, no bloat. Loads only when you click the icon.' },
 ];
 
@@ -632,7 +639,14 @@ function Download() {
                   <span><IcoClock s={13}/> v1.0.0</span>
                   <span><IcoMonitor s={13}/> Chrome MV3</span>
                 </div>
-                <a href="#" className="lp-btn lp-btn-primary" style={{width:'100%',justifyContent:'center',padding:12}}>
+                <a
+                  href={DRIVE_ZIP_URL}
+                  download="fillkaro-extension.zip"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="lp-btn lp-btn-primary"
+                  style={{width:'100%',justifyContent:'center',padding:12}}
+                >
                   <IcoDownload s={15}/> Download ZIP
                 </a>
                 <div style={{fontSize:12,color:'#9CA3AF',textAlign:'center',padding:'4px 0'}}>

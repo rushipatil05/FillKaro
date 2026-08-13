@@ -5,7 +5,6 @@ const cors       = require('cors');
 
 const profileRoutes  = require('./routes/profiles');
 const templateRoutes = require('./routes/templates');
-const historyRoutes  = require('./routes/history');
 const aiRoutes       = require('./routes/ai');
 
 const app  = express();
@@ -19,7 +18,6 @@ app.use(express.json({ limit: '2mb' }));
 /* ── Routes ────────────────────────────────────────────────── */
 app.use('/api/profiles',  profileRoutes);
 app.use('/api/templates', templateRoutes);
-app.use('/api/history',   historyRoutes);
 app.use('/api/ai',        aiRoutes);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', ts: new Date() }));
@@ -53,5 +51,4 @@ if (process.env.VERCEL !== '1') {
   };
 }
 
-/* ── Export for Vercel serverless ──────────────────────────── */
 module.exports = app;

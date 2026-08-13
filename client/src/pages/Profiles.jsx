@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Plus, X, Save, Upload, Search, Zap, Trash2 } from 'lucide-react';
+import { Plus, X, Save, Search, Zap, Trash2 } from 'lucide-react';
 import { getProfiles, createProfile, updateProfile, deleteProfile } from '../api/apiClient';
 import ProfileCard from '../components/ProfileCard';
-import ExcelUploader from '../components/ExcelUploader';
 
 /* ── Key-value row editor ────────────────────────────────── */
 function FieldMappingEditor({ pairs, onChange }) {
@@ -77,7 +76,6 @@ export default function Profiles() {
   const [form,     setForm]       = useState(EMPTY_FORM);
   const [pairs,    setPairs]      = useState([{ key: '', value: '' }]);
   const [tab,      setTab]        = useState('manual');
-  const [excelMap, setExcelMap]   = useState({});
 
   const load = () =>
     getProfiles().then(setProfiles).catch(console.error).finally(() => setLoading(false));
@@ -99,7 +97,6 @@ export default function Profiles() {
     setEditing(null);
     setForm(EMPTY_FORM);
     setPairs([{ key: '', value: '' }]);
-    setExcelMap({});
     setTab('manual');
     setShowForm(true);
   };
@@ -109,7 +106,6 @@ export default function Profiles() {
     setForm({ name: p.name, description: p.description || '', tags: (p.tags || []).join(', ') });
     const mapped = mapToPairs(p.fieldMap);
     setPairs(mapped.length ? mapped : [{ key: '', value: '' }]);
-    setExcelMap({});
     setTab('manual');
     setShowForm(true);
   };
@@ -130,7 +126,7 @@ export default function Profiles() {
   /* ── Submit ── */
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const fieldMap = tab === 'manual' ? pairsToMap(pairs) : excelMap;
+    const fieldMap = pairsToMap(pairs);
     const payload  = {
       name:        form.name,
       description: form.description,
@@ -341,35 +337,8 @@ export default function Profiles() {
                   />
                 </div>
 
-                {/* Tab switcher */}
-                <div>
-                  <div className="flex gap-1 p-1 bg-[#F3F4F6] rounded-[10px] mb-4">
-                    {[
-                      { id: 'manual', label: 'Manual Entry' },
-                      { id: 'excel',  label: 'Upload Excel', icon: <Upload size={12} /> },
-                    ].map(t => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        id={`tab-${t.id}`}
-                        onClick={() => setTab(t.id)}
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium
-                                    rounded-[8px] transition-all duration-150
-                                    ${tab === t.id
-                                      ? 'bg-white text-[#111827] shadow-sm border border-[#E5E7EB]'
-                                      : 'text-[#6B7280] hover:text-[#374151]'}`}
-                      >
-                        {t.icon}{t.label}
-                      </button>
-                    ))}
-                  </div>
+                  <FieldMappingEditor pairs={pairs} onChange={setPairs} />
 
-                  {tab === 'manual' ? (
-                    <FieldMappingEditor pairs={pairs} onChange={setPairs} />
-                  ) : (
-                    <ExcelUploader onData={data => setExcelMap(data)} />
-                  )}
-                </div>
 
                 {/* Actions */}
                 <div className="flex gap-2.5 pt-1">
