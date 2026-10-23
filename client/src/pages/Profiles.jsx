@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Plus, X, Save, Search, Zap, Trash2, Download, ArrowLeft } from 'lucide-react';
+import { Plus, X, Save, Search, Zap, Trash2, Download, ArrowLeft, RefreshCw } from 'lucide-react';
 import { getProfiles, createProfile, updateProfile, deleteProfile } from '../api/apiClient';
 import ProfileCard from '../components/ProfileCard';
 
@@ -81,7 +81,19 @@ export default function Profiles() {
   const load = () =>
     getProfiles().then(setProfiles).catch(console.error).finally(() => setLoading(false));
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const onSync = (e) => { if (e.detail) setProfiles(e.detail); };
+    window.addEventListener('fillkaro_profiles_updated', onSync);
+    return () => window.removeEventListener('fillkaro_profiles_updated', onSync);
+  }, []);
+
+  const [synced, setSynced] = useState(false);
+  const handleSyncToExtension = () => {
+    window.postMessage({ type: 'FILLKARO_SYNC_TO_EXTENSION', profiles }, '*');
+    setSynced(true);
+    setTimeout(() => setSynced(false), 2000);
+  };
 
   const handleExportJson = () => {
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(profiles, null, 2));
@@ -210,6 +222,21 @@ export default function Profiles() {
 
           {/* Spacer */}
           <div className="flex-1" />
+
+          {/* Sync to Extension button */}
+          <button
+            type="button"
+            onClick={handleSyncToExtension}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-[10px] border text-xs font-medium transition-colors shrink-0 ${
+              synced
+                ? 'border-green-300 bg-green-50 text-green-700'
+                : 'border-[#2563EB]/20 bg-blue-50/60 text-[#2563EB] hover:bg-blue-100/60'
+            }`}
+            title="Push profiles to FillKaro Chrome Extension"
+          >
+            <RefreshCw size={13} className={synced ? 'animate-spin' : ''} />
+            {synced ? 'Synced ✅' : 'Sync Extension'}
+          </button>
 
           {/* Export JSON backup button */}
           <button

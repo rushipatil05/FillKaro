@@ -1,12 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 
-// Hardcoded backend URL — change to your deployed Vercel backend URL for production
-const SERVER_URL = 'http://localhost:5000/api';
-
 /**
- * useChromeStorage hook
- * Connects directly to the FillKaro backend API.
- * Ensures the website dashboard and the Chrome extension have the exact same profiles!
+ * useChromeStorage hook (100% Local)
+ * Reads and persists profiles and API key directly in chrome.storage.local.
+ * No backend server or database needed!
  */
 export function useChromeStorage() {
   const [profiles,        setProfiles]        = useState([]);
@@ -14,14 +11,31 @@ export function useChromeStorage() {
   const [loading,         setLoading]         = useState(true);
   const [geminiApiKey,    setGeminiApiKey]   = useState('');
 
-  const fetchProfiles = useCallback(() => {
-    fetch(`${SERVER_URL}/profiles`)
-      .then(r => r.json())
-      .then(data => {
-        const list = Array.isArray(data) ? data : [];
-        setProfiles(list);
-        chrome.storage.local.set({ cachedProfiles: list });
+  // Initial load from chrome.storage.local
+  useEffect(() => {
+    chrome.storage.local.get(['selectedProfileId', 'cachedProfiles', 'geminiApiKey'], (res) => {
+      setGeminiApiKey(res.geminiApiKey || '');
 
+      const list = Array.isArray(res.cachedProfiles) ? res.cachedProfiles : [];
+      setProfiles(list);
+
+      if (list.length > 0) {
+        const found = list.find(p => (p._id || p.id) === res.selectedProfileId);
+        setSelectedProfile(found || list[0]);
+      } else {
+        setSelectedProfile(null);
+      }
+
+      setLoading(false);
+    });
+
+    // Real-time listener for any storage updates (e.g. from web dashboard sync)
+    const listener = (changes, area) => {
+      if (area !== 'local') return;
+
+      if (changes.cachedProfiles) {
+        const list = Array.isArray(changes.cachedProfiles.newValue) ? changes.cachedProfiles.newValue : [];
+        setProfiles(list);
         setSelectedProfile(curr => {
           if (curr) {
             const found = list.find(p => (p._id || p.id) === (curr._id || curr.id));
@@ -29,73 +43,21 @@ export function useChromeStorage() {
           }
           return list[0] || null;
         });
-      })
-      .catch((err) => {
-        console.warn('[FillKaro] Server unreachable, using local cache:', err.message);
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
-  // Load from chrome.storage on mount, then refresh from server
-  useEffect(() => {
-    chrome.storage.local.get(['selectedProfileId', 'cachedProfiles', 'geminiApiKey'], (res) => {
-      setGeminiApiKey(res.geminiApiKey || '');
-
-      if (res.cachedProfiles?.length) {
-        setProfiles(res.cachedProfiles);
-        const found = res.cachedProfiles.find(p => (p._id || p.id) === res.selectedProfileId);
-        if (found) setSelectedProfile(found);
-        else setSelectedProfile(res.cachedProfiles[0]);
       }
-      fetchProfiles();
-    });
-  }, [fetchProfiles]);
+
+      if (changes.geminiApiKey) {
+        setGeminiApiKey(changes.geminiApiKey.newValue || '');
+      }
+    };
+
+    chrome.storage.onChanged.addListener(listener);
+    return () => chrome.storage.onChanged.removeListener(listener);
+  }, []);
 
   const selectProfile = useCallback((profile) => {
     setSelectedProfile(profile);
     chrome.storage.local.set({ selectedProfileId: profile?._id || profile?.id || null });
   }, []);
-
-  const saveProfile = useCallback(async (profileData) => {
-    const isNew = !profileData._id && !profileData.id;
-    const targetId = profileData._id || profileData.id;
-
-    try {
-      const url = isNew ? `${SERVER_URL}/profiles` : `${SERVER_URL}/profiles/${targetId}`;
-      const method = isNew ? 'POST' : 'PUT';
-
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profileData),
-      });
-
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const saved = await res.json();
-
-      // Refresh from server
-      fetchProfiles();
-      setSelectedProfile(saved);
-      return saved;
-    } catch (err) {
-      console.warn('[FillKaro] Save to backend failed, saving locally:', err.message);
-      // Local fallback
-      const fallback = { ...profileData, _id: targetId || 'p_' + Date.now() };
-      setProfiles(prev => [fallback, ...prev.filter(p => (p._id || p.id) !== fallback._id)]);
-      setSelectedProfile(fallback);
-      return fallback;
-    }
-  }, [fetchProfiles]);
-
-  const deleteProfile = useCallback(async (profileId) => {
-    try {
-      await fetch(`${SERVER_URL}/profiles/${profileId}`, { method: 'DELETE' });
-      fetchProfiles();
-    } catch (err) {
-      console.warn('[FillKaro] Delete from backend failed, deleting locally:', err.message);
-      setProfiles(prev => prev.filter(p => (p._id || p.id) !== profileId));
-    }
-  }, [fetchProfiles]);
 
   const saveGeminiKey = useCallback((newKey) => {
     const key = (newKey || '').trim();
@@ -103,25 +65,12 @@ export function useChromeStorage() {
     setGeminiApiKey(key);
   }, []);
 
-  const importProfiles = useCallback((importedList) => {
-    if (!Array.isArray(importedList) || importedList.length === 0) return false;
-    setProfiles(importedList);
-    setSelectedProfile(importedList[0]);
-    chrome.storage.local.set({ cachedProfiles: importedList });
-    return true;
-  }, []);
-
   return {
     profiles,
     selectedProfile,
     selectProfile,
-    saveProfile,
-    deleteProfile,
-    importProfiles,
-    serverUrl: SERVER_URL,
     geminiApiKey,
     saveGeminiKey,
     loading,
-    refetch: fetchProfiles,
   };
 }

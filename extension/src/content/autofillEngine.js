@@ -75,6 +75,63 @@ const GENERIC_PLACEHOLDERS = new Set([
   'select', 'choose', 'mm/dd/yyyy',
 ]);
 
+/* ──────────────────────────────────────────────────────────
+   Semantic Synonym Groups (Instant 100% matches, zero API calls)
+─────────────────────────────────────────────────────────── */
+const SYNONYM_GROUPS = [
+  // Address / Location
+  ['address', 'location', 'residence', 'street', 'city', 'mailing address', 'residential address', 'permanent address', 'current address', 'place', 'locality', 'area'],
+  // Comments / Review / Feedback
+  ['comments', 'comment', 'review', 'reviews', 'feedback', 'feedbacks', 'message', 'remarks', 'remark', 'note', 'notes', 'suggestion', 'suggestions', 'description', 'opinion', 'query', 'queries', 'complaint', 'thoughts', 'additional info', 'additional comments'],
+  // Phone / Contact
+  ['phone', 'phone number', 'phonenumber', 'mobile', 'mobile number', 'mobilenumber', 'contact', 'contact number', 'telephone', 'cell', 'whatsapp', 'cell phone'],
+  // Email
+  ['email', 'email address', 'e mail', 'mail', 'email id', 'mail id'],
+  // Name
+  ['name', 'full name', 'fullname', 'your name', 'applicant name', 'candidate name', 'student name', 'user name', 'username'],
+  // College / University / Education
+  ['college', 'university', 'institute', 'institution', 'school', 'campus', 'organization'],
+  // Gender
+  ['gender', 'sex'],
+  // Date of Birth
+  ['dob', 'date of birth', 'birth date', 'birthday'],
+  // Job / Role
+  ['designation', 'role', 'job title', 'title', 'occupation', 'profession', 'position'],
+  // Company
+  ['company', 'company name', 'organization', 'employer', 'workplace'],
+];
+
+function resolveSynonym(field, profileMap) {
+  const rawCandidates = [
+    field.label,
+    field.ariaLabel,
+    field.name,
+    field.id,
+    field.placeholder,
+  ];
+
+  const candTexts = rawCandidates
+    .map(t => normalize(t))
+    .filter(t => t && !GENERIC_PLACEHOLDERS.has(t));
+
+  for (const cand of candTexts) {
+    for (const group of SYNONYM_GROUPS) {
+      const inGroup = group.some(item => cand === item || cand.includes(item) || item.includes(cand));
+      if (!inGroup) continue;
+
+      for (const [profileKey, profileVal] of Object.entries(profileMap)) {
+        const normKey = normalize(profileKey);
+        const keyInGroup = group.some(item => normKey === item || normKey.includes(item) || item.includes(normKey));
+        if (keyInGroup && (profileVal !== undefined && profileVal !== null && profileVal !== '')) {
+          return { key: profileKey, val: profileVal };
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
 function resolveComposite(fieldLabel, profileMap) {
   const normLabel = normalize(fieldLabel);
   if (!normLabel) return null;
@@ -320,24 +377,45 @@ function findElement(field) {
 
 
 export async function autofill(fields, profileMap, options = {}) {
-  const { threshold = 0.42, humanMode = false, delayBetween = 60 } = options;
+  const { threshold = 0.42, humanMode = false, delayBetween = 60, aiMatches = {} } = options;
   const results = [];
 
-  for (const field of fields) {
+  for (let idx = 0; idx < fields.length; idx++) {
+    const field = fields[idx];
     if (field.disabled) {
       results.push({ ...field, matched: false, reason: 'disabled' });
       continue;
     }
 
-    /* ── Try composite rule first (e.g. "Name" → first + last) ── */
-    // Prefer ariaLabel (reliable on Google Forms), then label, skip generic placeholders
-    const rawCompLabel = field.ariaLabel || field.label || field.name || field.placeholder || '';
-    const compLabel = GENERIC_PLACEHOLDERS.has(normalize(rawCompLabel)) ? '' : rawCompLabel;
-    let fillValue   = resolveComposite(compLabel, profileMap);
-
-    /* ── Direct fuzzy match ── */
+    let fillValue = null;
     let matchedKey = null;
-    if (!fillValue) {
+
+    /* ── Priority 1: Gemini AI direct match ── */
+    const aiMatch = aiMatches?.[idx] ?? aiMatches?.[String(idx)];
+    if (aiMatch && (aiMatch.value || aiMatch.value === 0)) {
+      fillValue = aiMatch.value;
+      matchedKey = aiMatch.key || 'Gemini AI';
+    }
+
+    /* ── Priority 2: Semantic Synonyms (Location ↔ Address, Comments ↔ Review, etc.) ── */
+    if (!fillValue && fillValue !== 0) {
+      const syn = resolveSynonym(field, profileMap);
+      if (syn) {
+        fillValue = syn.val;
+        matchedKey = syn.key;
+      }
+    }
+
+    /* ── Priority 3: Composite rule (e.g. "Name" → first + last) ── */
+    if (!fillValue && fillValue !== 0) {
+      const rawCompLabel = field.ariaLabel || field.label || field.name || field.placeholder || '';
+      const compLabel = GENERIC_PLACEHOLDERS.has(normalize(rawCompLabel)) ? '' : rawCompLabel;
+      fillValue = resolveComposite(compLabel, profileMap);
+      if (fillValue) matchedKey = 'Composite';
+    }
+
+    /* ── Priority 4: Dice coefficient fuzzy match fallback ── */
+    if (!fillValue && fillValue !== 0) {
       const m = bestMatch(field, profileMap, threshold);
       if (m.key) { fillValue = m.val; matchedKey = m.key; }
     }

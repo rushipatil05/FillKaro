@@ -64,4 +64,28 @@ function messageHandler(message, _sender, sendResponse) {
 window.__autoformListener = messageHandler;
 chrome.runtime.onMessage.addListener(messageHandler);
 
+/* ── Live Bridge: Sync between FillKaro Web Dashboard and Extension ── */
+window.addEventListener('message', (event) => {
+  if (event.source !== window || !event.data) return;
+
+  // Dashboard sends profiles to be stored in extension
+  if (event.data.type === 'FILLKARO_SYNC_TO_EXTENSION') {
+    const profiles = event.data.profiles;
+    if (Array.isArray(profiles)) {
+      chrome.storage.local.set({ cachedProfiles: profiles }, () => {
+        console.log('[FillKaro] Synced', profiles.length, 'profiles from dashboard to extension');
+      });
+    }
+  }
+
+  // Dashboard requests profiles currently in extension
+  if (event.data.type === 'FILLKARO_REQUEST_EXTENSION_PROFILES') {
+    chrome.storage.local.get(['cachedProfiles'], (res) => {
+      if (res.cachedProfiles?.length) {
+        window.postMessage({ type: 'FILLKARO_SYNC_FROM_EXTENSION', profiles: res.cachedProfiles }, '*');
+      }
+    });
+  }
+});
+
 console.log('[FillKaro] Content script loaded on', window.location.hostname);

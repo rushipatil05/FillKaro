@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { User, Plus, Edit3, ChevronDown, Check, Briefcase, GraduationCap, FolderPlus } from 'lucide-react';
+import { User, ChevronDown, Check, Briefcase, GraduationCap } from 'lucide-react';
 
 function getProfileIcon(name = '') {
   const lower = name.toLowerCase();
@@ -12,7 +12,7 @@ function getProfileIcon(name = '') {
   return <User size={14} className="shrink-0 text-brand-500" />;
 }
 
-export default function ProfileSelector({ profiles, selected, onSelect, onNewProfile, onEditProfile }) {
+export default function ProfileSelector({ profiles, selected, onSelect }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -35,32 +35,7 @@ export default function ProfileSelector({ profiles, selected, onSelect, onNewPro
   const fieldCount = selected?.fieldMap ? Object.keys(selected?.fieldMap).length : 0;
 
   return (
-    <div className="space-y-1.5 relative" ref={dropdownRef}>
-      {/* Header Label & Quick Actions */}
-      <div className="flex items-center justify-between">
-        <label className="text-xs font-medium text-slate-500">Active Profile</label>
-        <div className="flex items-center gap-2">
-          {selected && (
-            <button
-              type="button"
-              onClick={() => onEditProfile(selected)}
-              className="flex items-center gap-1 text-[11px] font-medium text-slate-500 hover:text-brand-600 transition-colors"
-              title="Edit fields of this profile"
-            >
-              <Edit3 size={11} /> Edit
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={onNewProfile}
-            className="flex items-center gap-1 text-[11px] font-medium text-brand-600 hover:text-brand-700 transition-colors"
-            title="Create a new profile"
-          >
-            <Plus size={12} /> New
-          </button>
-        </div>
-      </div>
-
+    <div className="relative" ref={dropdownRef}>
       {/* Main Dropdown Trigger Card */}
       <button
         type="button"
@@ -98,16 +73,16 @@ export default function ProfileSelector({ profiles, selected, onSelect, onNewPro
       {isOpen && (
         <div className="absolute top-full left-0 right-0 mt-1 z-30 bg-white border border-slate-200 rounded-xl shadow-lg p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100">
           <p className="px-2 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wide">
-            Your Profiles ({profiles.length})
+            Select Profile ({profiles.length})
           </p>
 
-          <div className="max-h-44 overflow-y-auto space-y-0.5 pr-0.5">
+          <div className="max-h-48 overflow-y-auto space-y-0.5 pr-0.5">
             {profiles.map(p => {
-              const isSelected = (selected?.id || selected?._id) === (p.id || p._id);
+              const isSelected = (selected?._id || selected?.id) === (p._id || p.id);
               const count = p.fieldMap ? Object.keys(p.fieldMap).length : 0;
               return (
                 <button
-                  key={p.id || p._id}
+                  key={p._id || p.id}
                   type="button"
                   onClick={() => handleSelect(p)}
                   className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-left text-xs transition-colors ${
@@ -129,21 +104,6 @@ export default function ProfileSelector({ profiles, selected, onSelect, onNewPro
                 </button>
               );
             })}
-          </div>
-
-          {/* Create new profile shortcut inside dropdown */}
-          <div className="pt-1 border-t border-slate-100 mt-1">
-            <button
-              type="button"
-              onClick={() => {
-                setIsOpen(false);
-                onNewProfile();
-              }}
-              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-brand-600 hover:bg-brand-50 transition-colors"
-            >
-              <FolderPlus size={13} />
-              <span>Create New Profile</span>
-            </button>
           </div>
         </div>
       )}
