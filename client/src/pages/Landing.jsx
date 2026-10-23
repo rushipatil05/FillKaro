@@ -19,12 +19,8 @@ const IcoSearch   = ({s=13}) => <svg width={s} height={s} viewBox="0 0 24 24" fi
 const IcoPlus     = ({s=12}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
 const IcoDots     = ({s=14}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="19" r="1" fill="currentColor"/></svg>;
 
-/* ─────────────────────────────────────────────────────────
-   📦 PASTE YOUR GOOGLE DRIVE DIRECT-DOWNLOAD LINK HERE
-   Format: https://drive.google.com/uc?export=download&id=FILE_ID
-   Replace FILE_ID with the ID from your Drive share link.
-──────────────────────────────────────────────────────────── */
-const DRIVE_ZIP_URL = 'https://drive.google.com/uc?export=download&id=YOUR_FILE_ID_HERE';
+
+const DRIVE_ZIP_URL = 'https://github.com/rushipatil05/FillKaro/releases/latest/download/FillKaro-Extension.zip';
 
 /* ── Scroll-fade hook ───────────────────────────────── */
 function useScrollFade() {
