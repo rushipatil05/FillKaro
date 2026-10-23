@@ -7,7 +7,7 @@ const profileSchema = new mongoose.Schema(
     fieldMap:    { type: Object, default: {} },
     tags:        { type: [String], default: [] },
   },
-  { timestamps: true }   // adds createdAt + updatedAt automatically
+  { timestamps: true }
 );
 
 // Keep results ordered by most-recently updated

@@ -1,6 +1,6 @@
 /**
  * content.js — Main content script
- * Always re-registers listeners (removes old ones first)
+ * Handles form detection, autofilling, and live-sync bridge with FillKaro web dashboard.
  */
 import { detectFormFields } from './formDetector.js';
 import { autofill }         from './autofillEngine.js';
@@ -14,7 +14,7 @@ function messageHandler(message, _sender, sendResponse) {
   switch (message.action) {
 
     case 'PING':
-      sendResponse({ ok: true, version: '1.1' });
+      sendResponse({ ok: true, version: '1.1.0' });
       break;
 
     case 'SCAN_FORM': {
@@ -22,7 +22,7 @@ function messageHandler(message, _sender, sendResponse) {
         const fields = detectFormFields();
         sendResponse({ success: true, fields });
       } catch (err) {
-        console.error('[AutoForm AI] Scan error:', err);
+        console.error('[FillKaro] Scan error:', err);
         sendResponse({ success: false, error: err.message });
       }
       break;
@@ -31,7 +31,6 @@ function messageHandler(message, _sender, sendResponse) {
     case 'AUTOFILL': {
       const { profileMap, options } = message;
 
-      // Use sent fields if non-empty, else detect fresh
       const fieldsToFill = (message.fields && message.fields.length > 0)
         ? message.fields
         : detectFormFields();
@@ -42,7 +41,7 @@ function messageHandler(message, _sender, sendResponse) {
           sendResponse({ success: true, results, filled, total: results.length });
         })
         .catch(err => {
-          console.error('[AutoForm AI] Autofill error:', err);
+          console.error('[FillKaro] Autofill error:', err);
           sendResponse({ success: false, error: err.message });
         });
       return true; // async
@@ -64,4 +63,5 @@ function messageHandler(message, _sender, sendResponse) {
 
 window.__autoformListener = messageHandler;
 chrome.runtime.onMessage.addListener(messageHandler);
-console.log('[AutoForm AI] Content script v1.1 loaded on', window.location.hostname);
+
+console.log('[FillKaro] Content script loaded on', window.location.hostname);

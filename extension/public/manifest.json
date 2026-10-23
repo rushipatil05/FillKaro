@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "AutoForm AI",
-  "version": "1.0.0",
-  "description": "Detect, export, and autofill web forms intelligently using profiles and Excel.",
+  "name": "FillKaro",
+  "version": "1.1.0",
+  "description": "AI-powered form autofill using your profiles. Uses your own Gemini API key for smart matching, or Dice coefficient as a free fallback.",
   "icons": {
     "16":  "icons/icon16.png",
     "48":  "icons/icon48.png",
@@ -11,7 +11,7 @@
   "action": {
     "default_popup": "popup.html",
     "default_icon":  "icons/icon48.png",
-    "default_title": "AutoForm AI"
+    "default_title": "FillKaro"
   },
   "background": {
     "service_worker": "background.js",

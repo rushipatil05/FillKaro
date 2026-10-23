@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Plus, X, Save, Search, Zap, Trash2 } from 'lucide-react';
+import { Plus, X, Save, Search, Zap, Trash2, Download, ArrowLeft } from 'lucide-react';
 import { getProfiles, createProfile, updateProfile, deleteProfile } from '../api/apiClient';
 import ProfileCard from '../components/ProfileCard';
 
@@ -75,12 +76,22 @@ export default function Profiles() {
   const [editing,  setEditing]    = useState(null);
   const [form,     setForm]       = useState(EMPTY_FORM);
   const [pairs,    setPairs]      = useState([{ key: '', value: '' }]);
-  const [tab,      setTab]        = useState('manual');
+  const [tab, setTab] = useState('manual');
 
   const load = () =>
     getProfiles().then(setProfiles).catch(console.error).finally(() => setLoading(false));
 
   useEffect(() => { load(); }, []);
+
+  const handleExportJson = () => {
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(profiles, null, 2));
+    const a = document.createElement('a');
+    a.href = dataStr;
+    a.download = `fillkaro-profiles-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
 
   /* ── Filtered list by search ── */
   const filtered = profiles.filter(p => {
@@ -161,18 +172,27 @@ export default function Profiles() {
       <header className="bg-white border-b border-[#E5E7EB] px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center gap-4">
 
+          {/* Back to Home */}
+          <Link
+            to="/"
+            className="flex items-center gap-1.5 text-xs text-[#6B7280] hover:text-[#111827] px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition-colors shrink-0"
+          >
+            <ArrowLeft size={13} /> Home
+          </Link>
+
           {/* Logo + Title */}
           <div className="flex items-center gap-2.5 shrink-0">
             <div className="w-8 h-8 bg-[#2563EB] rounded-[8px] flex items-center justify-center">
               <Zap size={16} className="text-white" fill="white" />
             </div>
             <span className="text-base font-semibold text-[#111827] tracking-tight">
-              Autofill Profiles
+              FillKaro Profiles
             </span>
           </div>
 
+
           {/* Search */}
-          <div className="flex-1 max-w-sm">
+          <div className="flex-1 max-w-xs">
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]" />
               <input
@@ -191,8 +211,18 @@ export default function Profiles() {
           {/* Spacer */}
           <div className="flex-1" />
 
+          {/* Export JSON backup button */}
+          <button
+            type="button"
+            onClick={handleExportJson}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-[10px] border border-[#E5E7EB] text-xs font-medium text-[#4B5563] hover:bg-slate-50 transition-colors shrink-0"
+            title="Download all profiles as JSON"
+          >
+            <Download size={13} /> Export JSON
+          </button>
+
           {/* New Profile button */}
-          <button id="new-profile-btn" onClick={openCreate} className="btn-primary">
+          <button id="new-profile-btn" onClick={openCreate} className="btn-primary shrink-0">
             <Plus size={15} /> New Profile
           </button>
         </div>

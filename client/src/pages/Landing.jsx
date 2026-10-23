@@ -50,7 +50,7 @@ function Navbar() {
       <div className="lp-container lp-nav-inner">
         <a href="#" className="lp-nav-logo">
           <div className="lp-logo-icon"><IcoZap s={16}/></div>
-          AutoFill AI
+          FillKaro
         </a>
 
         <ul className="lp-nav-links">
@@ -322,7 +322,7 @@ function HeroDemo() {
           <div className="lp-hd-ext-header">
             <div className="lp-hd-ext-logo">
               <div className="lp-hd-ext-logo-icon"><IcoZap s={12}/></div>
-              <span className="lp-hd-ext-name">AutoFill AI</span>
+              <span className="lp-hd-ext-name">FillKaro</span>
             </div>
             <div className="lp-hd-tabs">
               <span className="lp-hd-tab">Scan</span>
@@ -549,7 +549,7 @@ function WhyApiKeys() {
           <div>
             <div className="lp-label"><IcoKey s={11}/> Why User API Keys?</div>
             <h2 className="lp-section-title">Your key. Your AI. Your control.</h2>
-            <p className="lp-section-sub">AutoFill AI uses Google Gemini for intelligent field matching. You provide your own key — keeping you in complete control.</p>
+            <p className="lp-section-sub">FillKaro uses Google Gemini for intelligent field matching. You provide your own key — keeping you in complete control.</p>
             <div className="lp-apikey-points">
               {API_POINTS.map(p=>(
                 <div className="lp-apikey-point lp-fade" key={p.title}>
@@ -572,12 +572,6 @@ function WhyApiKeys() {
               </div>
               <div className="lp-apikey-note">
                 <IcoCheck s={13}/> Stored locally · Never sent to any server
-              </div>
-            </div>
-            <div style={{borderTop:'1px solid #F3F4F6',paddingTop:16,display:'flex',flexDirection:'column',gap:8}}>
-              <div style={{fontSize:12,fontWeight:600,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'.06em'}}>Server URL</div>
-              <div style={{background:'#fff',border:'1px solid #E5E7EB',borderRadius:10,padding:'10px 12px',fontSize:13,color:'#6B7280',fontFamily:'monospace'}}>
-                {import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}
               </div>
             </div>
             <div style={{background:'#EFF6FF',border:'1px solid #BFDBFE',borderRadius:10,padding:14,fontSize:13,color:'#1E40AF',lineHeight:1.6}}>
@@ -630,13 +624,13 @@ function Download() {
           <div>
             <div className="lp-dl-card">
               <div className="lp-dl-card-header">
-                <h3>AutoFill AI — Chrome Extension</h3>
+                <h3>FillKaro — Chrome Extension</h3>
                 <p>Manually installable ZIP for Chrome Developer Mode</p>
               </div>
               <div className="lp-dl-card-body">
                 <div className="lp-dl-meta">
                   <span><IcoFile s={13}/> fillkaro-extension.zip</span>
-                  <span><IcoClock s={13}/> v1.0.0</span>
+                  <span><IcoClock s={13}/> v1.1.0</span>
                   <span><IcoMonitor s={13}/> Chrome MV3</span>
                 </div>
                 <a
@@ -654,7 +648,7 @@ function Download() {
                 </div>
                 <div style={{borderTop:'1px solid #F3F4F6',paddingTop:16,display:'flex',flexDirection:'column',gap:8}}>
                   <div style={{fontSize:12,fontWeight:600,textTransform:'uppercase',letterSpacing:'.05em',color:'#9CA3AF'}}>Requirements</div>
-                  {['Google Chrome (any recent version)','Node.js + MongoDB (for Profile Manager)','Free Gemini API key (optional for AI)'].map(r=>(
+                  {['Google Chrome (any recent version)','Free Gemini API key (optional — for AI matching)','No key? Dice coefficient fallback works automatically'].map(r=>(
                     <div key={r} style={{fontSize:13,color:'#6B7280',display:'flex',alignItems:'center',gap:8}}>
                       <IcoCheck s={13}/> {r}
                     </div>
@@ -662,7 +656,7 @@ function Download() {
                 </div>
               </div>
             </div>
-            <a href="https://github.com" target="_blank" rel="noopener"
+            <a href="https://github.com/rushipatil05/FillKaro" target="_blank" rel="noopener"
                className="lp-btn lp-btn-outline" style={{width:'100%',justifyContent:'center',marginTop:10}}>
               <IcoGithub s={15}/> View Source on GitHub
             </a>
@@ -751,16 +745,16 @@ function ProfileManagerPreview() {
    FAQ
 ═══════════════════════════════════════════════════════ */
 const FAQS = [
-  { q:'Is AutoFill AI free?',
-    a:'Yes — the extension and Profile Manager are completely free and open source. You only pay for Gemini API usage, billed to your own Google AI account. The free tier from Google is generous enough for typical form-filling use.' },
-  { q:'Is my data stored online?',
-    a:'No. Your profile data is stored in your local MongoDB database and in the browser extension storage. The backend runs on your own machine (localhost). Your personal information never reaches any external server.' },
-  { q:'Why do I need my own Gemini API key?',
-    a:'Embedding a developer key would expose it to all users, risk abuse, and create unexpected bills. With your own key, you control usage and costs. Get a free key at aistudio.google.com. The AI is optional — the extension uses Dice coefficient matching as a fallback when no key is provided.' },
+  { q:'Is FillKaro free?',
+    a:'Yes — the extension and Profile Manager are completely free and open source. You can optionally use your own Gemini API key for smart matching with Google\'s free tier, or rely on the built-in Dice coefficient matching with zero API keys.' },
+  { q:'Is my data secure and private?',
+    a:'Yes. Your API key and custom settings are stored locally in your browser extension storage and never shared. Profiles are synced securely with your backend database.' },
+  { q:'Why do I provide my own Gemini API key?',
+    a:'Using your own Gemini key keeps you in complete control of your usage and privacy. Get a free key at aistudio.google.com. If you don\'t want to use an API key, FillKaro automatically falls back to fast, local Dice coefficient matching.' },
   { q:'Does it work on every website?',
-    a:'It works on the vast majority of websites — standard HTML forms, Google Forms, React/Vue/Angular SPAs, and Material UI inputs. A small number of heavily custom or sandboxed implementations may not be fully supported.' },
+    a:'It works on standard HTML forms, Google Forms, React/Vue/Angular SPAs, and Material UI inputs. Dynamic and complex multi-step forms are continuously supported.' },
   { q:'Is it open source?',
-    a:'Yes. The full source code — extension, Node.js backend, and React dashboard — is available on GitHub. You are welcome to inspect, fork, self-host, or contribute.' },
+    a:'Yes. The full source code — extension, Node.js backend, and React dashboard — is available on GitHub. You are welcome to inspect, fork, or self-host.' },
 ];
 
 function FAQ() {
@@ -803,7 +797,7 @@ function Footer() {
             <div className="lp-footer-brand">
               <div className="lp-nav-logo" style={{display:'inline-flex'}}>
                 <div className="lp-logo-icon"><IcoZap s={16}/></div>
-                AutoFill AI
+                FillKaro
               </div>
               <p>A privacy-first Chrome extension that fills forms intelligently using your own AI key and reusable profiles.</p>
             </div>
@@ -820,16 +814,16 @@ function Footer() {
               <div className="lp-footer-col">
                 <h4>Resources</h4>
                 <ul>
-                  <li><a href="https://github.com" target="_blank" rel="noopener">GitHub</a></li>
-                  <li><a href="#">Documentation</a></li>
-                  <li><a href="#">Privacy Policy</a></li>
-                  <li><a href="mailto:contact@example.com">Contact</a></li>
+                  <li><a href="https://github.com/rushipatil05/FillKaro" target="_blank" rel="noopener">GitHub</a></li>
+                  <li><a href="#how-it-works">Documentation</a></li>
+                  <li><a href="#faq">FAQ</a></li>
+                  <li><a href="https://github.com/rushipatil05/FillKaro/issues" target="_blank" rel="noopener">Support & Issues</a></li>
                 </ul>
               </div>
             </div>
           </div>
           <div className="lp-footer-bottom">
-            <span>© 2026 AutoFill AI. All rights reserved.</span>
+            <span>© 2026 FillKaro. All rights reserved.</span>
             <span>Made with ♥ for privacy-conscious users</span>
           </div>
         </div>

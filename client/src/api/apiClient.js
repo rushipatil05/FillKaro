@@ -5,7 +5,6 @@ const api = axios.create({
   timeout: 10000,
 });
 
-// Add response interceptor for better error logging
 api.interceptors.response.use(
   response => response,
   error => {
@@ -32,8 +31,5 @@ export const getTemplates = () => api.get('/templates').then(r => r.data);
 export const createTemplate = (data) => api.post('/templates', data).then(r => r.data);
 export const updateTemplate = (id, d) => api.put(`/templates/${id}`, d).then(r => r.data);
 export const deleteTemplate = (id) => api.delete(`/templates/${id}`).then(r => r.data);
-
-// ── History (removed) ──────────────────────────────────────
-// History API functions removed because the History page was removed from the UI.
 
 export default api;

@@ -15,6 +15,35 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/fillkaro';
 app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'] }));
 app.use(express.json({ limit: '2mb' }));
 
+/* ── MongoDB connect (cached for serverless warm reuse) ────── */
+let _isConnected = false;
+
+async function connectDB() {
+  if (_isConnected && mongoose.connection.readyState === 1) return;
+  try {
+    await mongoose.connect(MONGO_URI, {
+      serverSelectionTimeoutMS: 5000,
+    });
+    _isConnected = true;
+    console.log('✅ MongoDB connected');
+  } catch (err) {
+    _isConnected = false;
+    console.error('❌ MongoDB connection failed:', err.message);
+    throw err;
+  }
+}
+
+// Ensure DB is connected before handling API requests
+app.use(async (req, res, next) => {
+  if (req.path === '/api/health') return next();
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    return res.status(503).json({ error: 'Database connection unavailable', details: err.message });
+  }
+});
+
 /* ── Routes ────────────────────────────────────────────────── */
 app.use('/api/profiles',  profileRoutes);
 app.use('/api/templates', templateRoutes);
@@ -22,33 +51,11 @@ app.use('/api/ai',        aiRoutes);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', ts: new Date() }));
 
-/* ── MongoDB connect (cached for serverless warm reuse) ────── */
-let _isConnected = false;
-
-async function connectDB() {
-  if (_isConnected) return;
-  try {
-    await mongoose.connect(MONGO_URI);
-    _isConnected = true;
-    console.log('✅ MongoDB connected');
-  } catch (err) {
-    console.error('❌ MongoDB connection failed:', err.message);
-    throw err;
-  }
-}
-
 /* ── Local dev: start the HTTP server normally ─────────────── */
 if (process.env.VERCEL !== '1') {
   connectDB()
     .then(() => app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`)))
-    .catch(() => process.exit(1));
-} else {
-  /* Vercel serverless: connect on first cold-start request */
-  const originalHandler = app.handle.bind(app);
-  app.handle = async (req, res) => {
-    await connectDB();
-    originalHandler(req, res);
-  };
+    .catch((err) => console.warn('⚠️ Server started without DB connection:', err.message));
 }
 
 module.exports = app;
