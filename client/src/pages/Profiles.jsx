@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Plus, X, Save, Search, Zap, Trash2, Download, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Plus, X, Save, Search, Zap, Trash2, ArrowLeft, RefreshCw } from 'lucide-react';
 import { getProfiles, createProfile, updateProfile, deleteProfile } from '../api/apiClient';
 import ProfileCard from '../components/ProfileCard';
 
@@ -95,15 +95,6 @@ export default function Profiles() {
     setTimeout(() => setSynced(false), 2000);
   };
 
-  const handleExportJson = () => {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(profiles, null, 2));
-    const a = document.createElement('a');
-    a.href = dataStr;
-    a.download = `fillkaro-profiles-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  };
 
   /* ── Filtered list by search ── */
   const filtered = profiles.filter(p => {
@@ -236,16 +227,6 @@ export default function Profiles() {
           >
             <RefreshCw size={13} className={synced ? 'animate-spin' : ''} />
             {synced ? 'Synced ✅' : 'Sync Extension'}
-          </button>
-
-          {/* Export JSON backup button */}
-          <button
-            type="button"
-            onClick={handleExportJson}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-[10px] border border-[#E5E7EB] text-xs font-medium text-[#4B5563] hover:bg-slate-50 transition-colors shrink-0"
-            title="Download all profiles as JSON"
-          >
-            <Download size={13} /> Export JSON
           </button>
 
           {/* New Profile button */}

@@ -1,6 +1,7 @@
 /**
  * formDetector.js — Improved label extraction
- * Handles Google Forms, Material UI, TypeForm, plain HTML forms
+ * Handles Google Forms, Material UI, TypeForm, plain HTML forms,
+ * and ARIA-based radio groups (div[role="radio"] as used in Google Forms).
  */
 
 const SKIP_TYPES  = new Set(['hidden', 'submit', 'button', 'reset', 'image']);
@@ -62,6 +63,65 @@ export function detectFormFields() {
     }
 
     fields.push(field);
+  });
+
+  // ── Extra: Google Forms / ARIA-based radio groups ──────────────────────────
+  // Google Forms renders radio buttons as div[role="radio"] inside a
+  // div[role="radiogroup"]. These are INVISIBLE to the standard input/select query.
+  // We detect each radiogroup as ONE field entry of type "ariaradio".
+  const allRadioGroups = Array.from(document.querySelectorAll('[role="radiogroup"]'));
+  allRadioGroups.forEach((group, groupIdx) => {
+    // Skip if already captured via native radio inputs
+    const nativeRadios = group.querySelectorAll('input[type="radio"]');
+    const visibleNative = Array.from(nativeRadios).filter(r => {
+      const rect = r.getBoundingClientRect();
+      return rect.width > 0 || rect.height > 0;
+    });
+    if (visibleNative.length > 0) return;
+
+    // Find the visible ARIA radio options
+    const ariaRadios = Array.from(group.querySelectorAll('[role="radio"]'));
+    if (ariaRadios.length === 0) return;
+
+    // Extract the question label from the nearest heading ancestor
+    const questionBox = (
+      group.closest('[role="listitem"]') ||
+      group.closest('[data-params]')     ||
+      group.closest('[jsmodel]')         ||
+      group.parentElement
+    );
+    const headingEl = questionBox?.querySelector('[role="heading"]');
+    const label = cleanText(headingEl?.innerText)
+      || cleanText(group.getAttribute('aria-label'))
+      || getLabel(group)
+      || '';
+
+    if (!label || SKIP_LABELS.has(label.toLowerCase())) return;
+
+    // Deduplicate by label
+    const dedupeKey = `ariaradio||${label}`;
+    if (seen.has(dedupeKey)) return;
+    seen.add(dedupeKey);
+
+    fields.push({
+      index:           fields.length,
+      tagName:         'div',
+      type:            'ariaradio',   // special type — signals ARIA radio group
+      id:              group.id || '',
+      name:            '',
+      label,
+      placeholder:     '',
+      required:        group.getAttribute('aria-required') === 'true',
+      value:           '',
+      disabled:        false,
+      ariaLabel:       group.getAttribute('aria-label') || label,
+      domIndex:        -1,            // not in FILLABLE_SEL; use radioGroupIndex
+      radioGroupIndex: groupIdx,      // position among all [role="radiogroup"] on page
+      options:         ariaRadios.map(r => ({
+        value: cleanText(r.getAttribute('aria-label') || r.innerText),
+        text:  cleanText(r.getAttribute('aria-label') || r.innerText),
+      })),
+    });
   });
 
   return fields;

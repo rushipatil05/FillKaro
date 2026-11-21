@@ -209,12 +209,13 @@ export default function App() {
     selectProfile,
     geminiApiKey,
     saveGeminiKey,
+    useGemini,
+    toggleUseGemini,
   } = useChromeStorage();
 
   const [pageInfo,    setPageInfo]    = useState(null);
   const [fillStatus,  setFillStatus]  = useState('idle'); // idle | filling | filled | error
   const [fillResult,  setFillResult]  = useState(null);
-  const [humanMode,   setHumanMode]   = useState(false);
   const [aiEngine,    setAiEngine]    = useState(null);  // 'gemini' | 'dice' | null
   const [activeView,  setActiveView]  = useState('main'); // 'main' | 'settings'
 
@@ -341,7 +342,7 @@ export default function App() {
       let usedEngine = 'dice';
       let aiError = null;
 
-      if (geminiApiKey) {
+      if (geminiApiKey && useGemini) {
         try {
           const embMatches = await matchWithEmbeddings(geminiApiKey, currentFields, profile);
           if (embMatches && Object.keys(embMatches).length > 0) {
@@ -364,9 +365,8 @@ export default function App() {
           fields:     currentFields,
           profileMap: profile,
           options:    {
-            humanMode,
             threshold: 0.42,
-            delayBetween: humanMode ? 100 : 50,
+            delayBetween: 50,
             aiMatches,
           },
         },
@@ -419,17 +419,35 @@ export default function App() {
               onSelect={selectProfile}
             />
 
-            {/* Human-like typing toggle */}
+            {/* Gemini AI matching toggle */}
             <div className="flex items-center justify-between bg-slate-50 rounded-xl px-3 py-2.5">
               <div>
-                <p className="text-xs font-medium text-slate-700">Human-like typing</p>
-                <p className="text-[10px] text-slate-400">Types char-by-char with slight delay</p>
+                <p className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
+                  Gemini AI matching
+                  {geminiApiKey && useGemini && (
+                    <span className="text-[9px] font-semibold bg-violet-100 text-violet-600 px-1.5 py-0.5 rounded-full">ON</span>
+                  )}
+                  {(!geminiApiKey || !useGemini) && (
+                    <span className="text-[9px] font-semibold bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded-full">Dice only</span>
+                  )}
+                </p>
+                <p className="text-[10px] text-slate-400">
+                  {geminiApiKey
+                    ? 'Semantic embeddings + Dice fallback'
+                    : <span>No key set — <button onClick={() => setActiveView('settings')} className="text-brand-500 underline">add one in Settings</button></span>
+                  }
+                </p>
               </div>
               <button
-                onClick={() => setHumanMode(m => !m)}
-                className="text-brand-600 transition-transform active:scale-90"
+                onClick={() => {
+                  if (!geminiApiKey) { setActiveView('settings'); return; }
+                  toggleUseGemini(!useGemini);
+                }}
+                className={`transition-transform active:scale-90 ${geminiApiKey && useGemini ? 'text-violet-500' : 'text-slate-300'}`}
               >
-                {humanMode ? <ToggleRight size={24} /> : <ToggleLeft size={24} className="text-slate-300" />}
+                {geminiApiKey && useGemini
+                  ? <ToggleRight size={24} />
+                  : <ToggleLeft size={24} />}
               </button>
             </div>
 
@@ -450,11 +468,9 @@ export default function App() {
                     <p className="font-medium text-green-700">✅ Filled {fillResult.filled}/{fillResult.total} fields</p>
                     {aiEngine && (
                       <p className="text-[10px] text-green-500">
-                        {aiEngine === 'gemini'
-                          ? '✨ Matched using Gemini AI'
-                          : aiEngine === 'embedding'
-                          ? '🧠 Matched using AI Embeddings'
-                          : '🎲 Matched using Dice coefficient'}
+                        {aiEngine === 'embedding'
+                          ? '🧠 Gemini AI Embeddings + Dice fallback'
+                          : '🎲 Dice coefficient matching'}
                       </p>
                     )}
                     {fillResult.aiError && (

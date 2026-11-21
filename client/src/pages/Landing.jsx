@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import './landing.css';
 
 /* ── Inline SVG icons (keeps bundle self-contained) ─── */
-const IcoZap      = ({s=16}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4.5 13.5H11L11 22L19.5 10.5H13Z"/></svg>;
+const IcoZap      = ({s=16}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
 const IcoDownload = ({s=15}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
 const IcoClock    = ({s=12}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>;
 const IcoMonitor  = ({s=20}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>;
@@ -408,7 +408,7 @@ function Hero() {
         <h1 className="lp-anim lp-delay1">Fill Any Form<br/>in Seconds.</h1>
 
         <p className="lp-hero-sub lp-anim lp-delay2">
-          Create multiple profiles and let AI intelligently fill online forms —
+          Create multiple profiles and let AI intelligently fill online forms
           while keeping your data completely private.
         </p>
 
@@ -491,14 +491,10 @@ function HowItWorks() {
    FEATURES
 ═══════════════════════════════════════════════════════ */
 const FEATURES = [
-  { icon:<IcoUser/>,  title:'Multiple Profiles',       desc:'Create unlimited profiles for any context — Personal, Work, College, and more.' },
-  { icon:<IcoZap s={18}/>, title:'One-Click Autofill', desc:'Select a profile and fill an entire form instantly — no manual typing needed.' },
-  { icon:<svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a10 10 0 110 20A10 10 0 0112 2z"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>, title:'AI Form Understanding', desc:'Gemini embeddings match your profile fields to any form label — even unusual ones.' },
+  { icon:<IcoUser/>,  title:'Multiple Profiles',       desc:'Create unlimited profiles for any context Personal, Work, College, and more.' },
+  { icon:<svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a10 10 0 110 20A10 10 0 0112 2z"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>, title:'AI Form Understanding', desc:'Gemini embeddings match your profile fields to any form label even unusual ones.' },
   { icon:<IcoGlobe/>, title:'Works on Most Sites',     desc:'Handles standard forms, Google Forms, React, Vue, and Material UI inputs.' },
-  { icon:<IcoShield/>,title:'Privacy First',            desc:'Your profile data never leaves your device. No servers receive your personal info.' },
   { icon:<IcoKey/>,   title:'User-Owned API Key',      desc:'Use your own Gemini key. We never see it, store it, or pay for your API usage.' },
-
-  { icon:<svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>, title:'Fast & Lightweight', desc:'No background processes, no bloat. Loads only when you click the icon.' },
 ];
 
 function Features() {
@@ -742,15 +738,13 @@ function ProfileManagerPreview() {
 ═══════════════════════════════════════════════════════ */
 const FAQS = [
   { q:'Is FillKaro free?',
-    a:'Yes — the extension and Profile Manager are completely free and open source. You can optionally use your own Gemini API key for smart matching with Google\'s free tier, or rely on the built-in Dice coefficient matching with zero API keys.' },
+    a:'Yes the extension and Profile Manager are completely free and open source. You can optionally use your own Gemini API key for smart matching with Google\'s free tier, or rely on the built-in Dice coefficient matching with zero API keys.' },
   { q:'Is my data secure and private?',
     a:'Yes. Your API key and custom settings are stored locally in your browser extension storage and never shared. Profiles are synced securely with your backend database.' },
   { q:'Why do I provide my own Gemini API key?',
     a:'Using your own Gemini key keeps you in complete control of your usage and privacy. Get a free key at aistudio.google.com. If you don\'t want to use an API key, FillKaro automatically falls back to fast, local Dice coefficient matching.' },
   { q:'Does it work on every website?',
-    a:'It works on standard HTML forms, Google Forms, React/Vue/Angular SPAs, and Material UI inputs. Dynamic and complex multi-step forms are continuously supported.' },
-  { q:'Is it open source?',
-    a:'Yes. The full source code — extension, Node.js backend, and React dashboard — is available on GitHub. You are welcome to inspect, fork, or self-host.' },
+    a:'It works on standard HTML forms, Google Forms, React, and Material UI inputs. Dynamic and complex multi-step forms are continuously supported.' },
 ];
 
 function FAQ() {
@@ -818,10 +812,7 @@ function Footer() {
               </div>
             </div>
           </div>
-          <div className="lp-footer-bottom">
-            <span>© 2026 FillKaro. All rights reserved.</span>
-            <span>Made with ♥ for privacy-conscious users</span>
-          </div>
+          
         </div>
       </div>
     </footer>

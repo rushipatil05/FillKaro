@@ -9,12 +9,16 @@ export function useChromeStorage() {
   const [profiles,        setProfiles]        = useState([]);
   const [selectedProfile, setSelectedProfile] = useState(null);
   const [loading,         setLoading]         = useState(true);
-  const [geminiApiKey,    setGeminiApiKey]   = useState('');
+  const [geminiApiKey,    setGeminiApiKey]    = useState('');
+  const [useGemini,       setUseGemini]       = useState(true); // ON by default when key is set
 
   // Initial load from chrome.storage.local
   useEffect(() => {
-    chrome.storage.local.get(['selectedProfileId', 'cachedProfiles', 'geminiApiKey'], (res) => {
+    chrome.storage.local.get(['selectedProfileId', 'cachedProfiles', 'geminiApiKey', 'useGemini'], (res) => {
       setGeminiApiKey(res.geminiApiKey || '');
+      // Default useGemini to true so it's on whenever a key exists
+      setUseGemini(res.useGemini !== false);
+
 
       const list = Array.isArray(res.cachedProfiles) ? res.cachedProfiles : [];
       setProfiles(list);
@@ -48,6 +52,10 @@ export function useChromeStorage() {
       if (changes.geminiApiKey) {
         setGeminiApiKey(changes.geminiApiKey.newValue || '');
       }
+
+      if (changes.useGemini !== undefined) {
+        setUseGemini(changes.useGemini.newValue !== false);
+      }
     };
 
     chrome.storage.onChanged.addListener(listener);
@@ -65,12 +73,19 @@ export function useChromeStorage() {
     setGeminiApiKey(key);
   }, []);
 
+  const toggleUseGemini = useCallback((val) => {
+    chrome.storage.local.set({ useGemini: val });
+    setUseGemini(val);
+  }, []);
+
   return {
     profiles,
     selectedProfile,
     selectProfile,
     geminiApiKey,
     saveGeminiKey,
+    useGemini,
+    toggleUseGemini,
     loading,
   };
 }

@@ -32,7 +32,6 @@ function score(keyNorm, candNorm) {
   if (!keyNorm || !candNorm) return 0;
   if (keyNorm === candNorm)  return 1;
   const d = dice(keyNorm, candNorm);
-  // Boost for substring containment
   const sub = (keyNorm.includes(candNorm) || candNorm.includes(keyNorm)) ? 0.15 : 0;
   return Math.min(1, d + sub);
 }
@@ -43,7 +42,6 @@ function score(keyNorm, candNorm) {
 ─────────────────────────────────────────────────────────── */
 const COMPOSITE_RULES = [
   {
-    // "Name", "Full Name", "Your Name" → firstName + lastName
     patterns: ['name', 'full name', 'fullname', 'your name', 'complete name', 'student name', 'candidate name'],
     groups: [
       ['first name', 'firstname', 'given name', 'givenname', 'first'],
@@ -52,7 +50,6 @@ const COMPOSITE_RULES = [
     compose: parts => parts.filter(Boolean).join(' ').trim(),
   },
   {
-    // "Full Address" → street + city + state + zip
     patterns: ['full address', 'complete address', 'mailing address', 'address'],
     groups: [
       ['address', 'street', 'street address', 'address line 1', 'address1'],
@@ -64,10 +61,6 @@ const COMPOSITE_RULES = [
   },
 ];
 
-/**
- * Try to resolve a field label using composite rules.
- * Returns the composed string, or null if no rule matched.
- */
 // Generic placeholder text that should never be used as a label for matching
 const GENERIC_PLACEHOLDERS = new Set([
   'your answer', 'type here', 'enter here', 'required', 'optional',
@@ -76,30 +69,107 @@ const GENERIC_PLACEHOLDERS = new Set([
 ]);
 
 /* ──────────────────────────────────────────────────────────
-   Semantic Synonym Groups (Instant 100% matches, zero API calls)
+   Semantic Synonym Groups
 ─────────────────────────────────────────────────────────── */
 const SYNONYM_GROUPS = [
-  // Address / Location
   ['address', 'location', 'residence', 'street', 'city', 'mailing address', 'residential address', 'permanent address', 'current address', 'place', 'locality', 'area'],
-  // Comments / Review / Feedback
   ['comments', 'comment', 'review', 'reviews', 'feedback', 'feedbacks', 'message', 'remarks', 'remark', 'note', 'notes', 'suggestion', 'suggestions', 'description', 'opinion', 'query', 'queries', 'complaint', 'thoughts', 'additional info', 'additional comments'],
-  // Phone / Contact
   ['phone', 'phone number', 'phonenumber', 'mobile', 'mobile number', 'mobilenumber', 'contact', 'contact number', 'telephone', 'cell', 'whatsapp', 'cell phone'],
-  // Email
   ['email', 'email address', 'e mail', 'mail', 'email id', 'mail id'],
-  // Name
   ['name', 'full name', 'fullname', 'your name', 'applicant name', 'candidate name', 'student name', 'user name', 'username'],
-  // College / University / Education
-  ['college', 'university', 'institute', 'institution', 'school', 'campus', 'organization'],
-  // Gender
+  // College/University — institution name ONLY, NOT percentages or CGPA
+  ['college', 'university', 'institute', 'institution', 'school', 'campus'],
   ['gender', 'sex'],
-  // Date of Birth
   ['dob', 'date of birth', 'birth date', 'birthday'],
-  // Job / Role
   ['designation', 'role', 'job title', 'title', 'occupation', 'profession', 'position'],
-  // Company
   ['company', 'company name', 'organization', 'employer', 'workplace'],
 ];
+
+/* ──────────────────────────────────────────────────────────
+   FIELD_ALIASES — explicit academic field patterns
+   Maps field label keywords → profile key keywords.
+
+   CRITICAL: if the field label matches an alias pattern but NO profile key
+   matches the profileKeywords, we return { blocked: true } to PREVENT
+   dice/synonym from wrongly filling the field (e.g. CGPA into 10th %).
+─────────────────────────────────────────────────────────── */
+const FIELD_ALIASES = [
+  // 10th / SSC / Matriculation percentage
+  {
+    fieldPatterns:  ['10th', 'tenth', 'ssc', 'matric', 'matriculation', 'x %', 'x percent',
+                     '10 percent', '10th percent', '10th %', 'class 10', 'class x',
+                     'secondary percent', 'secondary %'],
+    profileKeywords: ['10th', 'tenth', 'ssc', 'matric', 'class 10', 'class x',
+                      'secondary percent', '10 percent'],
+  },
+  // 12th / HSC / Intermediate percentage
+  {
+    fieldPatterns:  ['12th', 'twelfth', 'hsc', 'intermediate', 'xii', 'class 12', 'class xii',
+                     '12 percent', '12th percent', '12th %', 'higher secondary', 'inter percent'],
+    profileKeywords: ['12th', 'twelfth', 'hsc', 'intermediate', 'class 12', 'class xii',
+                      'higher secondary', '12 percent'],
+  },
+  // Graduation CGPA / GPA (checked before graduation %)
+  {
+    fieldPatterns:  ['cgpa', 'gpa', 'graduation cgpa', 'college cgpa', 'ug cgpa',
+                     'grad cgpa', 'degree cgpa', 'graduation gpa'],
+    profileKeywords: ['cgpa', 'gpa'],
+  },
+  // Graduation / UG percentage
+  {
+    fieldPatterns:  ['graduation percent', 'ug percent', 'degree percent', 'bachelor percent',
+                     'college percent', 'graduation %', 'ug %'],
+    profileKeywords: ['graduation percent', 'ug percent', 'degree percent',
+                      'bachelor percent', 'college percent'],
+  },
+];
+
+/**
+ * resolveAlias — explicit field-pattern → profile-key mapping.
+ *
+ * Returns:
+ *   { key, val, blocked: false }  — matched a profile key → use this value
+ *   { blocked: true }             — field IS an academic field, but no matching
+ *                                   profile key found → SKIP (don't fall through
+ *                                   to dice/synonym which would pick the wrong key)
+ *   null                          — field doesn't match any alias → let other
+ *                                   strategies handle it
+ */
+function resolveAlias(field, profileMap) {
+  const rawCandidates = [
+    field.label,
+    field.ariaLabel,
+    field.name,
+    field.placeholder,
+  ];
+
+  const candNorm = rawCandidates
+    .map(t => normalize(t || ''))
+    .filter(t => t && !GENERIC_PLACEHOLDERS.has(t))
+    .join(' ');
+
+  if (!candNorm) return null;
+
+  for (const alias of FIELD_ALIASES) {
+    const fieldMatches = alias.fieldPatterns.some(p => candNorm.includes(normalize(p)));
+    if (!fieldMatches) continue;
+
+    // Field pattern matched — now look for a profile key that fits
+    for (const [profileKey, profileVal] of Object.entries(profileMap)) {
+      const normKey = normalize(profileKey);
+      const keyMatches = alias.profileKeywords.some(pk => normKey.includes(normalize(pk)));
+      if (keyMatches && profileVal !== undefined && profileVal !== null && profileVal !== '') {
+        return { key: profileKey, val: profileVal, blocked: false };
+      }
+    }
+
+    // Field IS a recognized academic field but no matching profile key exists.
+    // Block dice/synonym from wrongly assigning a different academic value.
+    return { blocked: true };
+  }
+
+  return null; // Not a recognized alias field — no opinion
+}
 
 function resolveSynonym(field, profileMap) {
   const rawCandidates = [
@@ -136,10 +206,8 @@ function resolveComposite(fieldLabel, profileMap) {
   const normLabel = normalize(fieldLabel);
   if (!normLabel) return null;
 
-  // ── If a profile key directly/nearly matches the field label, skip composite ──
-  // e.g. field = "Address", profile has key "Address" → score 1.0 → use it directly
   for (const profileKey of Object.keys(profileMap)) {
-    if (score(normalize(profileKey), normLabel) >= 0.88) return null; // let bestMatch handle it
+    if (score(normalize(profileKey), normLabel) >= 0.88) return null;
   }
 
   for (const rule of COMPOSITE_RULES) {
@@ -148,7 +216,6 @@ function resolveComposite(fieldLabel, profileMap) {
     );
     if (!ruleMatches) continue;
 
-    // For each source group, find the best matching profile key
     const parts = rule.groups.map(group => {
       let best = { val: '', s: 0 };
       for (const [profileKey, profileVal] of Object.entries(profileMap)) {
@@ -166,11 +233,9 @@ function resolveComposite(fieldLabel, profileMap) {
 }
 
 /* ──────────────────────────────────────────────────────────
-   Best profile key → field matching
+   Best profile key → field matching (Dice)
 ─────────────────────────────────────────────────────────── */
 function bestMatch(field, profileMap, threshold) {
-  // Build candidates in PRIORITY order:
-  //   label > ariaLabel > name > id > placeholder (only if not generic)
   const rawCandidates = [
     { text: field.label       || '', weight: 1.0  },
     { text: field.ariaLabel   || '', weight: 1.0  },
@@ -181,12 +246,7 @@ function bestMatch(field, profileMap, threshold) {
 
   const candidates = rawCandidates
     .map(c => ({ ...c, text: normalize(c.text) }))
-    .filter(c => {
-      if (!c.text) return false;
-      // Exclude generic placeholder text — it matches everything equally wrong
-      if (GENERIC_PLACEHOLDERS.has(c.text)) return false;
-      return true;
-    });
+    .filter(c => c.text && !GENERIC_PLACEHOLDERS.has(c.text));
 
   let best = { key: null, val: null, score: 0 };
 
@@ -200,7 +260,6 @@ function bestMatch(field, profileMap, threshold) {
 
   if (best.score >= threshold) return best;
 
-  // ── Type-based fallback (when labels are completely missing) ──
   const TYPE_HINTS = {
     email:    ['email', 'e mail', 'mail'],
     tel:      ['phone', 'mobile', 'telephone', 'contact', 'tel', 'cell'],
@@ -231,7 +290,7 @@ function setNativeValue(el, value) {
     : window.HTMLInputElement.prototype;
   const desc = Object.getOwnPropertyDescriptor(proto, 'value');
   if (desc?.set) {
-    desc.set.call(el, value); // Must use .call(el) — native setter needs correct `this`
+    desc.set.call(el, value);
   } else {
     el.value = value;
   }
@@ -246,26 +305,14 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 /* ──────────────────────────────────────────────────────────
    Field fillers
 ─────────────────────────────────────────────────────────── */
-async function fillText(el, value, humanMode) {
+async function fillText(el, value) {
   el.focus();
-  if (humanMode) {
-    setNativeValue(el, '');
-    fire(el, 'input');
-    for (const ch of String(value)) {
-      setNativeValue(el, el.value + ch);
-      fire(el, 'input');
-      await sleep(18 + Math.random() * 20);
-    }
-    fire(el, 'change', 'blur');
-  } else {
-    setNativeValue(el, String(value));
-    fire(el, 'input', 'change', 'blur');
-  }
+  setNativeValue(el, String(value));
+  fire(el, 'input', 'change', 'blur');
 }
 
 function fillSelect(el, value) {
   const strVal = String(value).toLowerCase().trim();
-  // Exact value/text match first
   for (const opt of el.options) {
     if (opt.value.toLowerCase() === strVal || opt.text.toLowerCase().trim() === strVal) {
       el.value = opt.value;
@@ -273,7 +320,6 @@ function fillSelect(el, value) {
       return true;
     }
   }
-  // Fuzzy text match
   let best = { opt: null, s: 0 };
   for (const opt of el.options) {
     const s = Math.max(
@@ -290,27 +336,164 @@ function fillSelect(el, value) {
   return false;
 }
 
-function fillRadio(name, value) {
-  const radios = document.querySelectorAll(`input[type="radio"][name="${CSS.escape(name)}"]`);
-  const strVal = String(value).toLowerCase();
-  for (const r of radios) {
-    if (r.value.toLowerCase() === strVal) {
-      r.click();
-      fire(r, 'change');
-      return true;
+/**
+ * fillRadio — for standard HTML radio inputs (input[type="radio"]).
+ *
+ * Strategy 1: by [name] attribute (standard HTML forms).
+ * Strategy 2: container-scoped search for custom UIs where name is absent.
+ */
+function fillRadio(name, value, sourceEl) {
+  const strVal = String(value).toLowerCase().trim();
+
+  // ── Strategy 1: by name attribute ──
+  if (name) {
+    const radios = document.querySelectorAll(`input[type="radio"][name="${CSS.escape(name)}"]`);
+    if (radios.length > 0) {
+      for (const r of radios) {
+        if (r.value.toLowerCase() === strVal) {
+          r.click(); fire(r, 'change'); return true;
+        }
+      }
+      let best = { el: null, s: 0 };
+      for (const r of radios) {
+        const s = score(normalize(r.value), normalize(strVal));
+        if (s > best.s) best = { el: r, s };
+      }
+      if (best.el && best.s > 0.5) {
+        best.el.click(); fire(best.el, 'change'); return true;
+      }
     }
   }
-  // Fuzzy fallback
+
+  // ── Strategy 2: container-scoped search ──
+  if (sourceEl) {
+    const containers = [
+      sourceEl.closest('[role="listitem"]'),
+      sourceEl.closest('[role="group"]'),
+      sourceEl.closest('[data-params]'),
+      sourceEl.closest('fieldset'),
+      sourceEl.parentElement,
+      sourceEl.parentElement?.parentElement,
+      sourceEl.parentElement?.parentElement?.parentElement,
+    ].filter(Boolean);
+
+    for (const container of containers) {
+      const radios = Array.from(container.querySelectorAll('input[type="radio"]'));
+      if (!radios.length) continue;
+
+      const getRadioLabel = (r) => {
+        const al = r.getAttribute('aria-label');
+        if (al?.trim()) return al.trim().toLowerCase();
+        if (r.id) {
+          const lbl = document.querySelector(`label[for="${CSS.escape(r.id)}"]`);
+          if (lbl) return lbl.innerText.trim().toLowerCase();
+        }
+        const parentLbl = r.closest('label');
+        if (parentLbl) {
+          const clone = parentLbl.cloneNode(true);
+          clone.querySelectorAll('input').forEach(n => n.remove());
+          return clone.innerText.trim().toLowerCase();
+        }
+        const sib = r.nextElementSibling;
+        if (sib) return sib.innerText.trim().toLowerCase();
+        return (r.parentElement?.innerText || '').trim().toLowerCase();
+      };
+
+      for (const r of radios) {
+        const lbl = getRadioLabel(r);
+        if (lbl === strVal || r.value.toLowerCase() === strVal) {
+          r.click(); fire(r, 'change'); return true;
+        }
+      }
+      let best = { el: null, s: 0 };
+      for (const r of radios) {
+        const lbl = getRadioLabel(r);
+        const s = Math.max(
+          score(normalize(lbl), normalize(strVal)),
+          score(normalize(r.value), normalize(strVal)),
+        );
+        if (s > best.s) best = { el: r, s };
+      }
+      if (best.el && best.s > 0.45) {
+        best.el.click(); fire(best.el, 'change'); return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * fillAriaRadio — for Google Forms style radio buttons (div[role="radio"]).
+ *
+ * Finds the radiogroup by radioGroupIndex (recorded at scan time),
+ * then clicks the [role="radio"] whose aria-label best matches `value`.
+ */
+function fillAriaRadio(field, value) {
+  const strVal = String(value).toLowerCase().trim();
+
+  // ── Find the radiogroup element ──
+  let group = null;
+
+  // 1. By recorded radioGroupIndex (most reliable)
+  if (typeof field.radioGroupIndex === 'number' && field.radioGroupIndex >= 0) {
+    const all = document.querySelectorAll('[role="radiogroup"]');
+    group = all[field.radioGroupIndex] || null;
+  }
+
+  // 2. By id
+  if (!group && field.id) {
+    group = document.getElementById(field.id);
+  }
+
+  // 3. By label text match in nearest heading
+  if (!group) {
+    const all = document.querySelectorAll('[role="radiogroup"]');
+    for (const g of all) {
+      const qBox = g.closest('[role="listitem"]') || g.closest('[data-params]') || g.parentElement;
+      const heading = qBox?.querySelector('[role="heading"]');
+      const lbl = normalize(heading?.innerText || g.getAttribute('aria-label') || '');
+      const fieldNorm = normalize(field.label || field.ariaLabel || '');
+      if (lbl && fieldNorm && (lbl === fieldNorm || lbl.includes(fieldNorm) || fieldNorm.includes(lbl))) {
+        group = g;
+        break;
+      }
+    }
+  }
+
+  if (!group) return false;
+
+  const ariaRadios = Array.from(group.querySelectorAll('[role="radio"]'));
+  if (!ariaRadios.length) return false;
+
+  const getOptionText = (r) =>
+    (r.getAttribute('aria-label') || r.innerText || '').replace(/\s+/g, ' ').trim().toLowerCase();
+
+  // 1. Exact match
+  for (const r of ariaRadios) {
+    if (getOptionText(r) === strVal) {
+      r.click(); return true;
+    }
+  }
+
+  // 2. Contains match
+  for (const r of ariaRadios) {
+    const t = getOptionText(r);
+    if (t.includes(strVal) || strVal.includes(t)) {
+      r.click(); return true;
+    }
+  }
+
+  // 3. Fuzzy match
   let best = { el: null, s: 0 };
-  for (const r of radios) {
-    const s = score(normalize(r.value), normalize(strVal));
+  for (const r of ariaRadios) {
+    const s = score(normalize(getOptionText(r)), normalize(strVal));
     if (s > best.s) best = { el: r, s };
   }
-  if (best.el && best.s > 0.5) {
-    best.el.click();
-    fire(best.el, 'change');
-    return true;
+  if (best.el && best.s > 0.4) {
+    best.el.click(); return true;
   }
+
   return false;
 }
 
@@ -325,29 +508,25 @@ function fillCheckbox(el, value) {
 ─────────────────────────────────────────────────────────── */
 const FILLABLE_SEL = 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]), textarea, select';
 
-// aria-label values that are NOT unique — shared by all inputs on Google Forms.
-// Using querySelector with these would always return the FIRST input on the page.
 const GENERIC_ARIA_LABELS = new Set([
   'your answer', 'type here', 'enter here', 'enter your answer',
   'short answer text', 'long answer text', 'required',
 ]);
 
 function findElement(field) {
-  // 1. By id (most reliable for standard forms)
+  // ariaradio fields are handled entirely within fillAriaRadio — no DOM element needed here
+  if (field.type === 'ariaradio') return true; // sentinel — signals "ok to proceed"
+
   if (field.id) {
     const el = document.querySelector(`#${CSS.escape(field.id)}`);
     if (el) return el;
   }
 
-  // 2. By name attribute — works for both standard forms AND Google Forms (entry.XXXXX is unique per question)
   if (field.name) {
     const el = document.querySelector(`[name="${CSS.escape(field.name)}"]`);
     if (el) return el;
   }
 
-  // 3. By aria-label — ONLY when the label is question-specific (not a shared generic like "Your answer").
-  //    On Google Forms all short-answer inputs share aria-label="Your answer",
-  //    so querySelector would always return the FIRST input — causing wrong-field fills.
   if (field.ariaLabel) {
     const normAria = field.ariaLabel.replace(/[*✱＊]\s*/g, '').trim().toLowerCase();
     if (!GENERIC_ARIA_LABELS.has(normAria)) {
@@ -364,8 +543,6 @@ function findElement(field) {
     }
   }
 
-  // 4. By DOM position index — recorded at scan time, always unique and correct.
-  //    This is the primary fallback for Google Forms where id/name/aria-label are absent or shared.
   if (typeof field.domIndex === 'number' && field.domIndex >= 0) {
     const all = document.querySelectorAll(FILLABLE_SEL);
     const el  = all[field.domIndex];
@@ -377,7 +554,7 @@ function findElement(field) {
 
 
 export async function autofill(fields, profileMap, options = {}) {
-  const { threshold = 0.42, humanMode = false, delayBetween = 60, aiMatches = {} } = options;
+  const { threshold = 0.42, delayBetween = 60, aiMatches = {} } = options;
   const results = [];
 
   for (let idx = 0; idx < fields.length; idx++) {
@@ -397,7 +574,23 @@ export async function autofill(fields, profileMap, options = {}) {
       matchedKey = aiMatch.key || 'Gemini AI';
     }
 
-    /* ── Priority 2: Semantic Synonyms (Location ↔ Address, Comments ↔ Review, etc.) ── */
+    /* ── Priority 2: Explicit field aliases (academic fields — CGPA, 10th %, 12th %, etc.)
+          If the field IS a recognized academic field but no matching profile key exists,
+          we BLOCK dice/synonym from wrongly filling it. ── */
+    if (!fillValue && fillValue !== 0) {
+      const alias = resolveAlias(field, profileMap);
+      if (alias) {
+        if (alias.blocked) {
+          // Field recognized as academic but no matching profile key → skip entirely
+          results.push({ ...field, matched: false, reason: 'alias-blocked: recognized field but no matching profile key' });
+          continue;
+        }
+        fillValue = alias.val;
+        matchedKey = alias.key;
+      }
+    }
+
+    /* ── Priority 3: Semantic Synonyms ── */
     if (!fillValue && fillValue !== 0) {
       const syn = resolveSynonym(field, profileMap);
       if (syn) {
@@ -406,7 +599,7 @@ export async function autofill(fields, profileMap, options = {}) {
       }
     }
 
-    /* ── Priority 3: Composite rule (e.g. "Name" → first + last) ── */
+    /* ── Priority 4: Composite rule (e.g. "Name" → first + last) ── */
     if (!fillValue && fillValue !== 0) {
       const rawCompLabel = field.ariaLabel || field.label || field.name || field.placeholder || '';
       const compLabel = GENERIC_PLACEHOLDERS.has(normalize(rawCompLabel)) ? '' : rawCompLabel;
@@ -414,7 +607,7 @@ export async function autofill(fields, profileMap, options = {}) {
       if (fillValue) matchedKey = 'Composite';
     }
 
-    /* ── Priority 4: Dice coefficient fuzzy match fallback ── */
+    /* ── Priority 5: Dice coefficient fuzzy match fallback ── */
     if (!fillValue && fillValue !== 0) {
       const m = bestMatch(field, profileMap, threshold);
       if (m.key) { fillValue = m.val; matchedKey = m.key; }
@@ -425,7 +618,21 @@ export async function autofill(fields, profileMap, options = {}) {
       continue;
     }
 
-    /* ── Find the DOM element (4-strategy: id → name → aria-label → domIndex) ── */
+    /* ── Special case: ARIA radio (Google Forms) — handle before findElement ── */
+    if (field.type === 'ariaradio') {
+      const filled = fillAriaRadio(field, fillValue);
+      results.push({
+        ...field,
+        matched:    filled,
+        matchedKey: filled ? matchedKey : null,
+        value:      fillValue,
+        reason:     filled ? undefined : 'ariaradio: no matching option found',
+      });
+      if (delayBetween > 0) await sleep(delayBetween);
+      continue;
+    }
+
+    /* ── Find the DOM element (id → name → aria-label → domIndex) ── */
     const el = findElement(field);
     if (!el) {
       results.push({ ...field, matched: false, reason: 'element not found in DOM' });
@@ -437,11 +644,11 @@ export async function autofill(fields, profileMap, options = {}) {
       if (t === 'select' || field.tagName === 'select') {
         fillSelect(el, fillValue);
       } else if (t === 'radio') {
-        fillRadio(field.name, fillValue);
+        fillRadio(field.name, fillValue, el);
       } else if (t === 'checkbox') {
         fillCheckbox(el, fillValue);
       } else {
-        await fillText(el, fillValue, humanMode);
+        await fillText(el, fillValue);
       }
 
       results.push({ ...field, matched: true, matchedKey, value: fillValue });
